@@ -1,7 +1,8 @@
 from BaseHTTPServer import BaseHTTPRequestHandler
 import urlparse
+import sqlite3
 
-HOST_NAME = '192.168.0.10'
+HOST_NAME = '192.168.0.14'
 PORT_NUMBER = 8080
 baseurl = 'http://' + HOST_NAME + ':' + str(PORT_NUMBER)
 
@@ -77,20 +78,48 @@ class GetHandler(BaseHTTPRequestHandler):
     return(message)
 
   def siteIn(self, p):
-    print self.client_address[0], "IN", p.query
-    return "in" + str(p.query)
+    conn = sqlite3.connect('checkin.sqlite')
+    c = conn.cursor()
+    c.execute("INSERT INTO log VALUES (?,'IN',datetime('now','localtime'),?)",
+      (p.query, self.client_address[0]))
+    conn.commit()
+    conn.close()
+    return "Llegando a " + str(p.query)
 
   def siteOut(self, p):
-    print self.client_address[0], "OUT", p.query
-    return "out" + str(p.query)
+    conn = sqlite3.connect('checkin.sqlite')
+    c = conn.cursor()
+    c.execute("INSERT INTO log VALUES (?,'OUT',datetime('now','localtime'),?)",
+      (p.query, self.client_address[0]))
+    conn.commit()
+    conn.close()
+    return "Saliendo de " + str(p.query)
 
   def siteQuery(self, p):
-    print self.client_address[0], "Q", p.query
-    return "query" + str(p.query)
+    message_parts = [
+    '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
+    '<body>',
+    "<h1>Documentos en "+ str(p.query) +"</h1>", "<table>"]
+    conn = sqlite3.connect('checkin.sqlite')
+    c = conn.cursor()
+    for row in c.execute("SELECT direction, datetime, ip from log where site_id=? order by datetime limit 50", (p.query)):
+      message_parts.append("<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % row)
+    conn.close()
+    message_parts.append('</table>')
+    message_parts.append('</body>')
+    message_parts.append('')
+    message = '\r\n'.join(message_parts)
+    return(message)
 
   def docCheckin(self, p):
-    print self.client_address[0], "DOC", p.query
-    return "doc" + str(p.query)
+    conn = sqlite3.connect('checkin.sqlite')
+    c = conn.cursor()
+    c.execute("SELECT direction,site_id from log where datetime>=datetime('now','-1 minute','localtime') and ip=? order by datetime desc limit 1", [self.client_address[0]])
+    ans = c.fetchone() 
+    if ans is not None:
+      dir, date = ans
+      print "DOCUMENTO ", p.query, " ", dir, " ", date, " ", self.client_address[0]
+    return "documento " + str(p.query)
 
 
 

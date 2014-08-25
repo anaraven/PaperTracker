@@ -1,23 +1,30 @@
-delete table if exists sites;
+drop table if exists sites;
 create table sites (
         site_id text unique,
         description text,
         creation_date text
 );
 
-delete table if exists table documents;
+drop table if exists table documents;
 create table documents (
         doc_id text unique,
         description text,
         creation_date text
 );
 
-delete table if exists registro;
+drop table if exists registro;
 create table registro (
-        loc_id text not null,
+        site_id text not null,
         doc_id text not null,
         direction char not null,
         datetime text not null,
         ip text
-)
+);
 
+drop table if exists log;
+create table log (
+        site_id text not null,
+        direction char not null,
+        datetime text not null,
+        ip text
+);
